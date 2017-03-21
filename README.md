@@ -12,6 +12,9 @@ Yulong(Joseph) Fang
 
 **Real Time Sudoku Solver Android Application**
 
+
+![Project Demo](images/img1.png)
+
 ### Project Abstract:
 
 The purpose of this project is building a real-time sudoku game solver android
