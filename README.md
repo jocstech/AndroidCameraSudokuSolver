@@ -12,8 +12,7 @@ Yulong(Joseph) Fang
 
 **Real Time Sudoku Solver Android Application**
 
-
-![Project Demo](images/img1.png)
+![Project Demo](https://github.com/jocstech/AndroidCameraSudokuSolver/blob/master/Images/img1.png "demo")
 
 ### Project Abstract:
 
