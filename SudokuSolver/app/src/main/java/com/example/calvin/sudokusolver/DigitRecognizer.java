@@ -116,7 +116,7 @@ public class DigitRecognizer {
         // Resize the image
         Imgproc.resize(test_image, test_image, new Size(width, height));
         // Convert the image to grayscale
-        Imgproc.cvtColor(test_image, test_image, Imgproc.COLOR_RGB2GRAY);
+//        Imgproc.cvtColor(test_image, test_image, Imgproc.COLOR_RGB2GRAY);
         // Adaptive Threshold
         Imgproc.adaptiveThreshold(test_image, test_image, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C,
                 Imgproc.THRESH_BINARY_INV, 15,2);

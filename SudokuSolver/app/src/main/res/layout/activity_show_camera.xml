@@ -7,8 +7,17 @@
     android:layout_height="match_parent"
     >
 
+    <Button
+        android:id="@+id/captureButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:onClick="capture"
+        android:text="@string/capture_button"/>
+
 
     <com.example.calvin.sudokusolver.PortraitCameraView
+        android:layout_above="@id/captureButton"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone"
@@ -16,6 +25,15 @@
         opencv:show_fps="true"
         opencv:camera_id="any"
         />
+
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/solve_img"
+        android:layout_above="@id/captureButton"
+        android:visibility="gone"/>
+
 
 
 </RelativeLayout>
