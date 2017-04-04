@@ -43,6 +43,7 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -79,6 +80,8 @@ public class ShowCameraActivity extends AppCompatActivity implements CvCameraVie
     GridRecognizer gridRecognizer;
 
     String digit_result;
+    TessBaseAPI tessBaseApi;
+    String DATA_PATH = Environment.getExternalStorageDirectory().getAbsolutePath() + "/SudokuSolver/";
     boolean running;
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -91,6 +94,7 @@ public class ShowCameraActivity extends AppCompatActivity implements CvCameraVie
                     gridRecognizer = new GridRecognizer();
                     mnist.ReadMNISTData();
                     mOpenCvCameraView.enableView();
+
                 } break;
                 default:
                 {
@@ -203,7 +207,6 @@ public class ShowCameraActivity extends AppCompatActivity implements CvCameraVie
         }
         Mat copyImage = inputFrame.rgba();
         points = biggest.toArray();
-        Log.i("Testing", biggest.total() + "");
         cropped = new Mat();
         if (points.length >= 4) {
             Rect R = new Rect(new Point(points[0].x, points[0].y), new Point(points[2].x, points[2].y));
@@ -216,66 +219,6 @@ public class ShowCameraActivity extends AppCompatActivity implements CvCameraVie
             Core.line(copyImage, new Point(points[2].x, points[2].y), new Point(points[3].x, points[3].y), new Scalar(255, 0, 0), 2);
             Core.line(copyImage, new Point(points[3].x, points[3].y), new Point(points[0].x, points[0].y), new Scalar(255, 0, 0), 2);
         }
-        //mRgba.release();
-       /* mGray.release();
-        mIntermediateMat.release();
-
-        mRgba = inputFrame.gray();
-        contours = new ArrayList<MatOfPoint>();
-        hierarchy = new Mat();
-
-        //Imgproc.Canny(mRgba, mIntermediateMat, 80, 100);
-        Imgproc.threshold(mRgba, mIntermediateMat, 60, 255, Imgproc.THRESH_BINARY_INV);
-        Imgproc.findContours(mIntermediateMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-        hierarchy.release();
-        for (MatOfPoint cnt : contours) {
-            Rect r = Imgproc.boundingRect(cnt);
-            Point pt1 = new Point(r.x, r.y);
-            Point pt2 = new Point(r.x + r.width, r.y + r.height);
-            Scalar color = new Scalar(0,0,255);
-            Imgproc.rectangle(mRgba, pt1, pt2, color, 3);
-        }*/
-
- /*       Mat temp = inputFrame.rgba();
-        Core.rectangle(temp, new Point (temp.cols()/2 -100,
-                            temp.rows() / 2 - 100), new Point(temp.cols()/2 + 100,
-                            temp.rows() / 2 + 100), new Scalar(0,0,0),3);
-        if (!running) {
-            running = true;
-            Mat digit = temp.submat(temp.rows() / 2 - 80, temp.rows() / 2 +
-                    80, temp.cols() / 2 - 80, temp.cols() / 2
-                    + 80).clone();
-
-            //Core.transpose(digit, digit);
-
-            //String s = String.valueOf(mnist.FindMatch(digit));
-
-            new digitTask().execute(digit);
-
-            Core.putText(temp, digit_result, new Point(temp.cols() / 2 - 100,
-                    temp.rows() / 2 - 100), 2, 12.0, new Scalar(0, 0, 0));
-        }
-*/
-        //Core.transpose(temp, temp);
-
-/*
-       Mat lines = gridRecognizer.HoughLines(cropped);
-
-        for (int i = 0; i < lines.cols() ; i++) {
-            double[] points = lines.get(0,i);
-            double x1,y1,x2,y2;
-
-            x1 = points[0];
-            y1 = points[1];
-            x2 = points[2];
-            y2 = points[3];
-
-            Point pt1 = new Point(x1, y1);
-            Point pt2 = new Point(x2, y2);
-
-            Core.line(copyImage, pt1, pt2, new Scalar(255,0,0),2);
-        }
-*/
 
         return copyImage;
     }
@@ -293,35 +236,108 @@ public class ShowCameraActivity extends AppCompatActivity implements CvCameraVie
     }
 
     public void solve(View v) {
+//        api=new TessBaseAPI();
+//        api.init(Environment.getExternalStorageDirectory().getAbsolutePath() + "/SudokuSolver/", "eng");
+//        api.setVariable(TessBaseAPI.VAR_CHAR_WHITELIST, "123456789");
+
+        tessBaseApi = new TessBaseAPI();
+        tessBaseApi.init(DATA_PATH, "eng");
+        tessBaseApi.setVariable(TessBaseAPI.VAR_CHAR_WHITELIST, "123456789");
+
         mOpenCvCameraView.setVisibility(View.GONE);
         ImageView iv = (ImageView) findViewById(R.id.solve_img);
         iv.setVisibility(View.VISIBLE);
         //Log.i("Testing", cropBM.getWidth() + " ; " + cropBM.getHeight());
         iv.setImageBitmap(cropBM);
 
-        Imgproc.GaussianBlur(cropped, cropped,new Size(11,11),0);
+        int SUDOKU_SIZE = 9;
+        int IMAGE_WIDTH = cropped.width();
+        int IMAGE_HEIGHT = cropped.height();
+        double PADDING = IMAGE_WIDTH/22;
+        int CELLSIZE = IMAGE_WIDTH/SUDOKU_SIZE;
+        int HSIZE = IMAGE_HEIGHT/SUDOKU_SIZE;
+        int WSIZE = IMAGE_WIDTH/SUDOKU_SIZE;
 
-        Mat lines = gridRecognizer.HoughLines(cropped);
+        int[][] sudos = new int[SUDOKU_SIZE][SUDOKU_SIZE];
 
-        for (int i = 0; i < lines.cols() ; i++) {
-            double[] points = lines.get(0, i);
-            double x1, y1, x2, y2;
+        for (int y = 0, iy = 0; y < IMAGE_HEIGHT - HSIZE ; y+= HSIZE,iy++) {
+            for (int x = 0, ix = 0 ; x < IMAGE_WIDTH - WSIZE; x+= WSIZE,ix++) {
+                // initial
+                sudos[iy][ix] = 0;
+                // find the center point
+                int cx = (x + WSIZE/2 );
+                int cy = (y + HSIZE/2 );
+                Point p1 = new Point(cx-PADDING,cy-PADDING);
+                Point p2 = new Point(cx+PADDING,cy+PADDING);
+                Rect R = new Rect(p1, p2);
 
-            x1 = points[0];
-            y1 = points[1];
-            x2 = points[2];
-            y2 = points[3];
+                Core.rectangle(cropped, p1, p2, new Scalar(255),2);
 
-            Point pt1 = new Point(x1, y1);
-            Point pt2 = new Point(x2, y2);
+                Mat digit_cropped = new Mat(cropped, R);
+                Imgproc.GaussianBlur(digit_cropped, digit_cropped, new Size(5, 5), 0);
 
-            Core.line(cropped, pt1, pt2, new Scalar(255, 0, 0), 2);
+                Bitmap digit_bitmap = Bitmap.createBitmap(digit_cropped.cols(), digit_cropped.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(digit_cropped, digit_bitmap);
+//                api.setImage(digit_bitmap);
+
+                //tessBaseApi.setImage(digit_bitmap);
+                //String recognizedText = tessBaseApi.getUTF8Text();
+                String recognizedText = extractText(digit_bitmap);
+                //int r = mnist.FindMatch(digit_cropped);
+               // Log.d("testing", recognizedText);
+
+
+                if (recognizedText.length() == 1) {
+                   sudos[iy][ix] = Integer.parseInt(recognizedText);
+                }
+            }
+
+
+          Log.i("testing",""+Arrays.toString(sudos[iy]));
         }
 
         Bitmap bm = Bitmap.createBitmap(cropped.cols(), cropped.rows(),Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(cropped, bm);
         iv.setImageBitmap(bm);
 
+
+
+
+//
+//        for (int j = 0; j < 9; j=j+10) {
+//            int num[] = {0,0,0,0,0,0,0,0,0};
+//            for (int i = 0; i < 9; i++) {
+//                int t = 10;
+//                Point p1 = new Point(points.get(j+i).x + t, points.get(j+i).y + t);
+//                Point p2 = new Point(points.get(j+i + 11).x - t, points.get(j+i + 11).y - t);
+//                Rect R = new Rect(p1, p2);
+//                Mat digit_cropped = new Mat(cropped, R);
+//                Imgproc.GaussianBlur(digit_cropped, digit_cropped, new Size(5, 5), 0);
+//                Bitmap bm = Bitmap.createBitmap(digit_cropped.cols(), digit_cropped.rows(), Bitmap.Config.ARGB_8888);
+//                Utils.matToBitmap(digit_cropped, bm);
+//                //iv.setImageBitmap(bm);
+//
+//                //int r = mnist.FindMatch(digit_cropped);
+//                api.setImage(bm);
+//                String recognizedText = api.getUTF8Text();
+//                if (!(recognizedText.isEmpty() || recognizedText.length() > 1)) {
+//                    num[i] = Integer.parseInt(recognizedText);
+//                }
+//            }
+//            Log.i("testing", Arrays.toString(num) );
+//
+//        }
+
+        tessBaseApi.end();
     }
 
+    private String extractText(Bitmap bitmap)
+    {
+        String extractedText;
+        tessBaseApi.stop();
+        tessBaseApi.clear();
+        tessBaseApi.setImage(bitmap);
+        return tessBaseApi.getUTF8Text();
+    }
 }
+
